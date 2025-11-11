@@ -1,10 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://lancela.github.io/</loc>
-    <priority>1.0</priority>
-  </url>
+
+  <!-- 网站首页 -->
   <url>
     <loc>https://lancela.github.io/testdemo/</loc>
+    <lastmod>2025-11-11</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- 示例：关于页面 -->
+  <url>
+    <loc>https://lancela.github.io/testdemo/about.html</loc>
+    <lastmod>2025-11-11</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
+
+  <!-- 示例：产品页面 -->
+  <url>
+    <loc>https://lancela.github.io/testdemo/products.html</loc>
+    <lastmod>2025-11-11</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- 示例：联系方式页面 -->
+  <url>
+    <loc>https://lancela.github.io/testdemo/contact.html</loc>
+    <lastmod>2025-11-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
 </urlset>
