@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>表单示例（jQuery 提交）</title>
+  <!-- jQuery CDN -->
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js" integrity="sha256-/xUj+3OJ+Y3bXQp2Kk6Yk6YfQbKjvFq0hK/2a5A2m9k=" crossorigin="anonymous"></script>
+  <style>
+    /* 简洁的样式，用于演示 */
+    :root{--accent:#2563eb;--bg:#f7f9fc;--card:#ffffff;--danger:#ef4444}
+    html,body{height:100%;margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial}
+    body{background:linear-gradient(180deg,#f3f6fb 0%,var(--bg) 100%);display:flex;align-items:center;justify-content:center;padding:32px}
+    .card{background:var(--card);max-width:720px;width:100%;padding:28px;border-radius:12px;box-shadow:0 6px 24px rgba(20,30,60,0.08)}
+    h1{margin:0 0 12px;font-size:20px}
+    p.lead{margin:0 0 20px;color:#475569}
+
+    form .row{display:flex;gap:12px}
+    .field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+    .field.half{flex:1}
+    label{font-size:13px;color:#0f172a}
+    input[type="text"],input[type="email"],textarea,input[type="file"],select{padding:10px 12px;border:1px solid #e6eef8;border-radius:8px;font-size:14px;background:#fff}
+    textarea{min-height:120px;resize:vertical}
+    .help{font-size:12px;color:#64748b}
+    .error{color:var(--danger);font-size:13px}
+    .actions{display:flex;gap:8px;align-items:center;margin-top:8px}
+    button{background:var(--accent);color:#fff;border:none;padding:10px 14px;border-radius:10px;cursor:pointer;font-weight:600}
+    button[disabled]{opacity:0.6;cursor:not-allowed}
+    .btn-ghost{background:transparent;color:var(--accent);border:1px solid #e6eef8}
+
+    .status{margin-left:8px;font-size:14px}
+    .success{color:green}
+    .visually-hidden{position:absolute!important;height:1px;width:1px;overflow:hidden;clip:rect(1px,1px,1px,1px);white-space:nowrap}
+
+    /* small responsive */
+    @media (max-width:640px){.row{flex-direction:column}}
+  </style>
+</head>
+<body>
+  <main class="card" role="main">
+    <h1>联系表单（jQuery 提交示例）</h1>
+    <p class="lead">示例包含前端验证、AJAX 提交、上传文件支持与无 JS 回退。</p>
+
+    <!-- progressive enhancement: action + method 提供无 JS 的后端提交回退 -->
+    <form id="contactForm" action="https://formspree.io/f/mgvrvlyb" method="post" enctype="multipart/form-data" novalidate>
+
+      <div class="row">
+        <div class="field half">
+          <label for="name">姓名 <span aria-hidden="true">*</span></label>
+          <input id="name" name="name" type="text" required minlength="2" placeholder="张三">
+          <div class="help">至少 2 个字符</div>
+          <div class="error" data-for="name" aria-live="polite"></div>
+        </div>
+
+        <div class="field half">
+          <label for="email">邮箱 <span aria-hidden="true">*</span></label>
+          <input id="email" name="email" type="email" required placeholder="you@example.com">
+          <div class="help">我们会给你回信</div>
+          <div class="error" data-for="email" aria-live="polite"></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="subject">主题</label>
+        <input id="subject" name="subject" type="text" placeholder="简短主题">
+        <div class="error" data-for="subject" aria-live="polite"></div>
+      </div>
+
+      <div class="field">
+        <label for="message">留言内容 <span aria-hidden="true">*</span></label>
+        <textarea id="message" name="message" required minlength="10" placeholder="请输入你的问题或描述..."></textarea>
+        <div class="help">至少 10 个字符</div>
+        <div class="error" data-for="message" aria-live="polite"></div>
+      </div>
+
+      <div class="row">
+
+        <div class="field half">
+          <label for="category">类别</label>
+          <select id="category" name="category">
+            <option value="general">一般咨询</option>
+            <option value="bug">问题反馈</option>
+            <option value="sales">商务合作</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>
+          <input id="agree" name="agree" type="checkbox" required>
+          我同意被本网站联系（必选）
+        </label>
+        <div class="error" data-for="agree" aria-live="polite"></div>
+      </div>
+
+      <div class="actions">
+        <button id="submitBtn" type="submit">提交</button>
+        <button id="clearBtn" type="button" class="btn-ghost">清空</button>
+        <div class="status" aria-live="polite"></div>
+      </div>
+
+      <!-- 简单的无障碍提示 -->
+      <p class="visually-hidden" id="form-status" aria-live="polite"></p>
+    </form>
+
+    <!-- 成功/失败弹窗占位（只做简单替代） -->
+    <div id="result" role="status" aria-live="polite" style="margin-top:12px"></div>
+  </main>
+
+  <script>
+  (function($){
+    // 配置
+    var MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    var SUBMIT_URL = '/submit'; // 根据你的后端修改
+
+    // 简单的邮箱正则（足够大多数场景）
+    function isValidEmail(email){
+      return /^\S+@\S+\.\S+$/.test(email);
+    }
+
+    // 显示错误
+    function showError(key,msg){
+      var $el = $('[data-for="'+key+'"]');
+      $el.text(msg || '');
+    }
+
+    // 清除所有错误
+    function clearErrors(){
+      $('[data-for]').text('');
+    }
+
+    // 表单验证
+    function validateForm($form){
+      var ok = true;
+      clearErrors();
+
+      var name = $.trim($('#name').val());
+      if(!name || name.length < 2){ showError('name','姓名至少 2 个字符'); ok = false; }
+
+      var email = $.trim($('#email').val());
+      if(!email || !isValidEmail(email)){ showError('email','请输入有效邮箱地址'); ok = false; }
+
+      var message = $.trim($('#message').val());
+      if(!message || message.length < 10){ showError('message','留言至少 10 个字符'); ok = false; }
+
+      var agree = $('#agree').is(':checked');
+      if(!agree){ showError('agree','你必须同意以便我们联系你'); ok = false; }
+
+      var file = $('#attachment')[0].files[0];
+      if(file){
+        if(file.size > MAX_FILE_SIZE){ showError('attachment','文件过大，最大 5MB'); ok = false; }
+      }
+
+      return ok;
+    }
+
+    // 设置状态文案
+    function setStatus(msg, isError){
+      var $status = $('.status');
+      $status.text(msg||'');
+      $('#form-status').text(msg||'');
+      if(isError) $status.removeClass('success'); else $status.addClass('success');
+    }
+
+    // 禁用/启用表单
+    function setFormEnabled(enabled){
+      $('#submitBtn').prop('disabled', !enabled);
+      $('#contactForm :input').not('#submitBtn').prop('disabled', !enabled);
+      if(!enabled) setStatus('正在提交...');
+    }
+
+    $(function(){
+      var $form = $('#contactForm');
+
+      // 清空按钮
+      $('#clearBtn').on('click', function(){
+        $form[0].reset(); clearErrors(); setStatus(''); $('#result').empty();
+      });
+
+      // 拦截原生提交，使用 jQuery AJAX
+      $form.on('submit', function(e){
+        e.preventDefault();
+
+        // 前端验证
+        if(!validateForm($form)){
+          setStatus('请先修正表单中的错误', true);
+          return;
+        }
+
+        // 防止多次提交
+        setFormEnabled(false);
+
+        // 构造 FormData（支持文件）
+        var data = new FormData($form[0]);
+
+        // 如果需要在 header 中加入 CSRF token，可在此读取并设置
+        var headers = {};
+        // headers['X-CSRF-Token'] = $('meta[name="csrf-token"]').attr('content') || '';
+
+        // AJAX 提交
+        $.ajax({
+          url: SUBMIT_URL,
+          method: 'POST',
+          data: data,
+          processData: false,
+          contentType: false,
+          headers: headers,
+          dataType: 'json',
+          success: function(res){
+            // 这里假设后端返回 JSON: { success: true, message: '...' }
+            if(res && res.success){
+              setStatus('提交成功', false);
+              $('#result').html('<div class="success">' + (res.message || '我们已收到你的消息。') + '</div>');
+              $form[0].reset();
+            } else {
+              var msg = (res && res.message) ? res.message : '服务器返回错误，请稍后重试';
+              setStatus(msg, true);
+              $('#result').html('<div class="error">' + msg + '</div>');
+            }
+          },
+          error: function(xhr, status, err){
+            var msg = '提交失败：' + (xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : status || err);
+            setStatus(msg, true);
+            $('#result').html('<div class="error">' + msg + '</div>');
+          },
+          complete: function(){
+            // 恢复表单
+            setFormEnabled(true);
+          }
+        });
+      });
+
+      // 可选：对输入实时验证以改善体验
+      $('#email').on('blur', function(){
+        var v = $.trim($(this).val());
+        if(v && !isValidEmail(v)) showError('email','邮箱格式不正确');
+        else showError('email','');
+      });
+
+      $('#name').on('input', function(){ if($(this).val().length >= 2) showError('name',''); });
+      $('#message').on('input', function(){ if($(this).val().length >= 10) showError('message',''); });
+
+    });
+  })(jQuery);
+  </script>
+</body>
+</html>
